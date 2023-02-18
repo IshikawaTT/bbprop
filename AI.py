@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from fbprophet import Prophet
 from fbprophet.plot import plot_plotly
-from neuralprophet import NeuralProphet         #NeuralProphet
-from sklearn.metrics import mean_absolute_error #評価指標MAE
-from statistics import mean                     #平均値の計算
+from neuralprophet import NeuralProphet
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from statistics import mean
 import plotly.offline as py
 
 #########################################################
@@ -59,11 +60,12 @@ forecast = model.predict(future)
 # テストデータに予測値を結合
 # df_test['Prophet Predict'] = forecast[-train_len:]['yhat']
 df_test = df_test.merge(forecast[['ds', 'yhat']], on='ds')
-print(df_test)
 
 #########################################################
 # 結果表示
 #########################################################
+print('RMSE:')
+print(np.sqrt(mean_squared_error(df_test['y'], df_test['yhat'])))
 print('MAE:')
 print(mean_absolute_error(df_test['y'], df_test['yhat'])) 
 print('MAPE:')
