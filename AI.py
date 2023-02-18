@@ -14,8 +14,10 @@ import plotly.offline as py
 #########################################################
 # 学習データ整備
 #########################################################
+print("# 学習データ整備##################################")
 csv_path = './data/btc.csv'
 df = pd.read_csv(csv_path)
+# df.drop_duplicates(subset=['date(Y/M/D H)'], inplace=True)
 df['date(Y/M/D H)'] = pd.to_datetime(df['date(Y/M/D H)'], format='%Y/%m/%d %H')
 
 # 元の桁が大きすぎるため、10000で割ることで数値を最小限にする
@@ -41,35 +43,40 @@ print("df_train: " + str(train_len)+", df_test: " + str(test_len))
 #########################################################
 # 学習
 #########################################################
+print("# 学習 ###########################################")
 # インスタンス化
-model = Prophet()
+model = NeuralProphet()
 # 学習
-model.fit(df_train)
+model.fit(df_train[['ds', 'y']], freq="H")
 
 
 #########################################################
 # 予測
 #########################################################
+print("# 予測 ###########################################")
 # 学習データに基づいて未来を予測(検証h分)
-future = model.make_future_dataframe(periods=test_len,freq='H')
+future = model.make_future_dataframe(df_train[['ds', 'y']], periods=test_len, n_historic_predictions=train_len)
 forecast = model.predict(future)
+print(forecast)
 
 #########################################################
 # 精度評価
 #########################################################
+print("# 精度評価 #######################################")
 # テストデータに予測値を結合
 # df_test['Prophet Predict'] = forecast[-train_len:]['yhat']
-df_test = df_test.merge(forecast[['ds', 'yhat']], on='ds')
+df_test = df_test.merge(forecast[['ds', 'yhat1']], on='ds')
 
 #########################################################
 # 結果表示
 #########################################################
+print("# 結果表示 #######################################")
 print('RMSE:')
-print(np.sqrt(mean_squared_error(df_test['y'], df_test['yhat'])))
+print(np.sqrt(mean_squared_error(df_test['y'], df_test['yhat1'])))
 print('MAE:')
-print(mean_absolute_error(df_test['y'], df_test['yhat'])) 
+print(mean_absolute_error(df_test['y'], df_test['yhat1'])) 
 print('MAPE:')
-print(mean(abs(df_test['y'] - df_test['yhat'])/df_test['y']) *100)
+print(mean(abs(df_test['y'] - df_test['yhat1'])/df_test['y']) *100)
 
 ## 予測結果の可視化
 ## 描画
