@@ -5,12 +5,15 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from fbprophet import Prophet
 from fbprophet.plot import plot_plotly
+from neuralprophet import NeuralProphet         #NeuralProphet
+from sklearn.metrics import mean_absolute_error #評価指標MAE
+from statistics import mean                     #平均値の計算
 import plotly.offline as py
 
 #########################################################
 # 学習データ整備
 #########################################################
-csv_path = 'C:/Users/Tsubasa/work/bitbank/data/btc.csv'
+csv_path = './data/btc.csv'
 df = pd.read_csv(csv_path)
 df['date(Y/M/D H)'] = pd.to_datetime(df['date(Y/M/D H)'], format='%Y/%m/%d %H')
 
@@ -21,28 +24,57 @@ for col in col_names:
 	# df[col] -= ave
 	df[col] /= 10000
 
-# 学習データの先頭5つ確認
-print(df.head()) 
-
 # 列名の変更
 data = df.reset_index().rename(columns={'date(Y/M/D H)': 'ds', 'last(JPY)': 'y'})
-print(data.head()) 
+
+# 訓練データ・検証データ
+print("data: " + str(len(data)))
+train_len = int(len(data) * 0.7)
+
+df_train = data[:train_len]
+df_test = data[train_len:]
+train_len = len(df_train)
+test_len = len(df_test)
+print("df_train: " + str(train_len)+", df_test: " + str(test_len))
+
+#########################################################
+# 学習
+#########################################################
 # インスタンス化
 model = Prophet()
-model.add_regressor('low(JPY)')
 # 学習
-model.fit(data)
+model.fit(df_train)
 
-# 学習データに基づいて未来を予測(24h分)
-future = model.make_future_dataframe(periods=24,freq='H')
+
+#########################################################
+# 予測
+#########################################################
+# 学習データに基づいて未来を予測(検証h分)
+future = model.make_future_dataframe(periods=test_len,freq='H')
 forecast = model.predict(future)
 
-print(forecast.tail(30))
+#########################################################
+# 精度評価
+#########################################################
+# テストデータに予測値を結合
+# df_test['Prophet Predict'] = forecast[-train_len:]['yhat']
+df_test = df_test.merge(forecast[['ds', 'yhat']], on='ds')
+print(df_test)
 
-# 予測結果の可視化
-# 描画
+#########################################################
+# 結果表示
+#########################################################
+print('MAE:')
+print(mean_absolute_error(df_test['y'], df_test['yhat'])) 
+print('MAPE:')
+print(mean(abs(df_test['y'] - df_test['yhat'])/df_test['y']) *100)
+
+## 予測結果の可視化
+## 描画
 #fig1 = plot_plotly(model, forecast)
-# ノードブック上に出力
+## ノードブック上に出力
 #py.iplot(fig1)
+
+
 
 
