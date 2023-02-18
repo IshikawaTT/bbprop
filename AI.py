@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 #from pandas_datareader.yahoo.daily import YahooDailyReader
 from datetime import datetime
 from fbprophet import Prophet
-from fbprophet.plot import plot_plotly
+#from fbprophet.plot import plot_plotly
 from neuralprophet import NeuralProphet
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
@@ -42,8 +42,11 @@ test_len = len(df_test)
 print("df_train: " + str(train_len)+", df_test: " + str(test_len))
 
 # 説明変数情報
-regressorsList = data.columns[4:]
+regressorsList = []
+for col in data.columns[4:]:
+	regressorsList.append(str(col))
 print(regressorsList)
+
 
 #########################################################
 # 学習
@@ -51,21 +54,50 @@ print(regressorsList)
 print("# 学習 ###########################################")
 # インスタンス化
 model = NeuralProphet(
-	n_lags = 1
+	#growth="linear",
+	#changepoints=None,
+	#n_changepoints=10,
+	#changepoints_range=0.9,
+	#trend_reg=0,
+	#trend_reg_threshold=False,
+	#yearly_seasonality="auto",
+	#weekly_seasonality="auto",
+	#daily_seasonality="auto",
+	seasonality_mode="multiplicative",
+	#seasonality_reg=0,
+	#n_forecasts=1,
+	n_lags=1,
+	num_hidden_layers=1,
+	d_hidden=1,
+	#ar_reg=None,
+	#learning_rate=None,
+	#epochs=None,
+	#batch_size=None,
+	#loss_func="Huber",
+	#optimizer="AdamW",
+	#newer_samples_weight=2,
+	#newer_samples_start=0.0,
+	#impute_missing=True,
+	#collect_metrics=True,
+	#normalize="auto",
+	#global_normalization=False,
+	#global_time_normalization=True,
+	#unknown_data_normalization=False,
 )
-model.add_lagged_regressor(names=['high(JPY)', 'low(JPY)'])
+model.add_lagged_regressor(names=regressorsList)
 
 
 # 学習
 #model.fit(df_train[['ds', 'y']], freq="H")
-model.fit(df_train[['ds', 'y', 'high(JPY)', 'low(JPY)']], freq="H")
+df_train_tmp = df_train.drop(['level_0','index'],axis='columns')
+model.fit(df_train_tmp, freq="H")
 
 #########################################################
 # 予測
 #########################################################
 print("# 予測 ###########################################")
 # 学習データに基づいて未来を予測(検証h分)
-future = model.make_future_dataframe(df_train[['ds', 'y', 'high(JPY)', 'low(JPY)']], periods=test_len, n_historic_predictions=train_len)
+future = model.make_future_dataframe(df_train_tmp, periods=test_len, n_historic_predictions=train_len)
 forecast = model.predict(future)
 print(forecast)
 
@@ -84,13 +116,6 @@ print("# 結果表示 #######################################")
 print('RMSE:'+ str(np.sqrt(mean_squared_error(df_test['y'], df_test['yhat1']))) )
 print('MAE:'+ str(mean_absolute_error(df_test['y'], df_test['yhat1'])) )
 print('MAPE:'+ str(mean(abs(df_test['y'] - df_test['yhat1'])/df_test['y']) *100) )
-
-## 予測結果の可視化
-## 描画
-#fig1 = plot_plotly(model, forecast)
-## ノードブック上に出力
-#py.iplot(fig1)
-
 
 
 
