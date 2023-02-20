@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 #from pandas_datareader.yahoo.daily import YahooDailyReader
 from datetime import datetime
-from fbprophet import Prophet
+#from fbprophet import Prophet
 #from fbprophet.plot import plot_plotly
 from neuralprophet import NeuralProphet
 from sklearn.metrics import mean_absolute_error
@@ -45,7 +45,7 @@ print("df_train: " + str(train_len)+", df_test: " + str(test_len))
 regressorsList = []
 for col in data.columns[4:]:
 	regressorsList.append(str(col))
-print(regressorsList)
+print("説明変数情報:" + str(regressorsList))
 
 
 #########################################################
@@ -63,19 +63,19 @@ model = NeuralProphet(
 	#yearly_seasonality="auto",
 	#weekly_seasonality="auto",
 	#daily_seasonality="auto",
-	seasonality_mode="multiplicative",
+	#seasonality_mode="multiplicative",
 	#seasonality_reg=0,
-	#n_forecasts=1,
-	n_lags=1,
-	num_hidden_layers=1,
-	d_hidden=1,
+	n_forecasts=test_len,
+	#n_lags=1,
+	#num_hidden_layers=None,
+	#d_hidden=None,
 	#ar_reg=None,
 	#learning_rate=None,
 	#epochs=None,
 	#batch_size=None,
 	#loss_func="Huber",
 	#optimizer="AdamW",
-	#newer_samples_weight=2,
+	newer_samples_weight=2,
 	#newer_samples_start=0.0,
 	#impute_missing=True,
 	#collect_metrics=True,
@@ -84,23 +84,33 @@ model = NeuralProphet(
 	#global_time_normalization=True,
 	#unknown_data_normalization=False,
 )
-model.add_lagged_regressor(names=regressorsList)
+for reg_name in regressorsList:
+	model.add_future_regressor(
+		name=reg_name,
+	)
 
 
 # 学習
 #model.fit(df_train[['ds', 'y']], freq="H")
-df_train_tmp = df_train.drop(['level_0','index'],axis='columns')
-model.fit(df_train_tmp, freq="H")
+df_train_tmp = df_train[['ds', 'y']+regressorsList]
+model.fit(
+	df_train_tmp,
+	freq="H",
+)
 
 #########################################################
 # 予測
 #########################################################
 print("# 予測 ###########################################")
 # 学習データに基づいて未来を予測(検証h分)
-future = model.make_future_dataframe(df_train_tmp, periods=test_len, n_historic_predictions=train_len)
+future = model.make_future_dataframe(
+	df_train_tmp,
+	#events_df=None,
+	regressors_df=df_train[regressorsList] if len(regressorsList) > 0 else None,
+	periods=test_len,
+	n_historic_predictions=train_len,
+)
 forecast = model.predict(future)
-print(forecast)
-
 #########################################################
 # 精度評価
 #########################################################
@@ -108,14 +118,21 @@ print("# 精度評価 #######################################")
 # テストデータに予測値を結合
 # df_test['Prophet Predict'] = forecast[-train_len:]['yhat']
 df_test = df_test.merge(forecast[['ds', 'yhat1']], on='ds')
-
-#########################################################
-# 結果表示
-#########################################################
-print("# 結果表示 #######################################")
 print('RMSE:'+ str(np.sqrt(mean_squared_error(df_test['y'], df_test['yhat1']))) )
 print('MAE:'+ str(mean_absolute_error(df_test['y'], df_test['yhat1'])) )
 print('MAPE:'+ str(mean(abs(df_test['y'] - df_test['yhat1'])/df_test['y']) *100) )
+
+print("# グラフ生成 #####################################")
+fig = model.plot(df_test)
+plt.show()
+#print("df")
+#print(df)
+#print("df_train_tmp")
+#print(df_train_tmp)
+#print("forecast")
+#print(forecast)
+#print("df_test")
+#print(df_test)
 
 
 
